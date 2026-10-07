@@ -1,0 +1,39 @@
+FROM python:3.8.20-bullseye
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN sed -i \
+       -e 's|http://deb.debian.org/debian-security|http://archive.debian.org/debian-security|g' \
+       -e 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' \
+       /etc/apt/sources.list \
+    && printf 'Acquire::Check-Valid-Until "false";\n' \
+       > /etc/apt/apt.conf.d/99bullseye-archive \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+       build-essential \
+       libssl-dev \
+       libffi-dev \
+       git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/coconut-venv
+ENV PATH="/opt/coconut-venv/bin:${PATH}"
+
+WORKDIR /workspace
+
+COPY setup.py setup.cfg README.md LICENSE ./
+COPY coconut ./coconut
+COPY tests ./tests
+
+RUN pip install wheel
+
+# These are the exact releases selected by setup.py's unpinned dependencies.
+# Installing them sequentially avoids bplib's legacy setup_requires recursion.
+RUN pip install petlib==0.0.45
+RUN pip install bplib==0.0.6
+RUN pip install --no-deps -e .
+RUN pip install pytest pytest-cov
+
+CMD ["bash"]
