@@ -11,7 +11,7 @@ changes, and the mapping between the implementation and the Coconut paper.
 - Original cryptographic library code has not been modified.
 
 
-The combined suite contains 9 passing tests. The Phase 8 nullifier is
+The combined suite contains 14 passing tests. The Phase 8 nullifier is
 intentionally not implemented; the requested ZK-binding TODO remains explicit.
 
 ##  implementation map
@@ -54,9 +54,10 @@ variant.
 Final verification on Python 3.8.20 completed successfully:
 
 ```text
-pytest -v --cov=coconut tests/: 9 passed, 96% coconut coverage
+pytest -v --cov=coconut tests/: 14 passed, 96% coconut coverage
 examples/trace_coconut.py: credential accepted = True
 python -m ashoka_demo.demo: credential accepted = True
+GUI POST /api/run: 9 stages complete, credential accepted = True
 ```
 
 `git diff -- coconut` is empty: none of the original cryptographic library
@@ -145,6 +146,28 @@ TODO: application-specific construction requiring ZK binding to credential
 secret k.
 ```
 
+## educational GUI
+
+The application layer now has a dependency-free browser interface:
+
+- `ashoka_demo/protocol.py` contains the reusable application flow and calls
+  the original functions in `coconut/scheme.py` directly;
+- `ashoka_demo/web.py` exposes the flow through a local standard-library HTTP
+  server;
+- `ashoka_demo/static/` contains the HTML, CSS, and JavaScript interface; and
+- `tests/test_ashoka_demo.py` verifies a complete real protocol run, the
+  application-only duplicate record behavior, and input validation.
+
+The GUI displays the paper algorithm, Python function, source file, stage
+result, and local duration. It never serializes the private student secret,
+ElGamal private key, authority secret shares, credential group elements, or
+proof responses. `IssueID` is the only displayed input included as a public
+credential attribute. Complaint ID and complaint text remain application data.
+
+This is new educational code. The original `coconut/` package is unchanged.
+The interface does not add a cryptographic nullifier and repeats the existing
+UsedList limitation in its result and security-boundary panel.
+
 ## Files added
 
 - `.dockerignore`
@@ -156,6 +179,12 @@ secret k.
 - `ashoka_demo/__init__.py`
 - `ashoka_demo/demo.py`
 - `ashoka_demo/README.md`
+- `ashoka_demo/protocol.py`
+- `ashoka_demo/web.py`
+- `ashoka_demo/static/index.html`
+- `ashoka_demo/static/styles.css`
+- `ashoka_demo/static/app.js`
+- `tests/test_ashoka_demo.py`
 
 ## Commands from a fresh terminal
 

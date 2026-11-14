@@ -25,6 +25,7 @@ WORKDIR /workspace
 
 COPY setup.py setup.cfg README.md LICENSE ./
 COPY coconut ./coconut
+COPY ashoka_demo ./ashoka_demo
 COPY tests ./tests
 
 RUN pip install wheel
@@ -35,5 +36,7 @@ RUN pip install petlib==0.0.45
 RUN pip install bplib==0.0.6
 RUN pip install --no-deps -e .
 RUN pip install pytest pytest-cov
+
+EXPOSE 8000
 
 CMD ["bash"]
