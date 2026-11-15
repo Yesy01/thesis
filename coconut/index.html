@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Local educational interface for the original Coconut threshold credential implementation.">
+    <title>Coconut Protocol Lab</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand" href="./" aria-label="Coconut Protocol Lab home">
+          <span class="brand-mark" aria-hidden="true">C</span>
+          <span>
+            <strong>Coconut</strong>
+            <small>Protocol Lab</small>
+          </span>
+        </a>
+        <div class="header-meta">
+          <span class="status-dot" aria-hidden="true"></span>
+          Browser demo · <a href="../">LRSW99 demo</a>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="eyebrow">Threshold credentials · Original implementation</div>
+          <h1>Follow one credential from <em>issuance</em> to verification.</h1>
+          <p class="hero-copy">
+            Run the repository's real 2-of-3 Coconut flow. The interface exposes
+            each protocol boundary while keeping the underlying cryptographic
+            functions unchanged. This browser edition uses BLS12-381 for group operations. The local complaint list resets on reload.
+          </p>
+          <div class="hero-facts" aria-label="Protocol configuration">
+            <div><strong>3</strong><span>Authorities</span></div>
+            <div><strong>2</strong><span>Threshold</span></div>
+            <div><strong>1 + 1</strong><span>Private + public attributes</span></div>
+          </div>
+        </section>
+
+        <section class="workspace" aria-label="Credential demonstration">
+          <aside class="control-panel">
+            <div class="section-heading">
+              <span class="step-label">Input</span>
+              <h2>Prepare a complaint</h2>
+              <p>Only <strong>IssueID</strong> enters the credential as a public attribute.</p>
+            </div>
+
+            <form id="protocol-form" data-runtime="browser">
+              <label for="issue-id">IssueID</label>
+              <input id="issue-id" name="issue_id" type="number" min="1" max="9007199254740991" value="20261007" required>
+
+              <label for="complaint-id">Complaint ID</label>
+              <input id="complaint-id" name="complaint_id" type="text" maxlength="120" value="complaint-001" required>
+
+              <label for="complaint-text">Complaint text</label>
+              <textarea id="complaint-text" name="complaint_text" rows="5" maxlength="5000" required>The hostel water supply has been unavailable since morning.</textarea>
+
+              <div class="attribute-map">
+                <div>
+                  <span class="attribute private">Private</span>
+                  <strong>student secret k</strong>
+                  <small>Sampled locally; never displayed</small>
+                </div>
+                <div>
+                  <span class="attribute public">Public</span>
+                  <strong>IssueID</strong>
+                  <small>Provided to verification</small>
+                </div>
+                <div>
+                  <span class="attribute app">Application</span>
+                  <strong>Complaint fields</strong>
+                  <small>Outside the credential</small>
+                </div>
+              </div>
+
+              <button id="run-button" type="submit">
+                <span>Run complete protocol</span>
+                <span aria-hidden="true">→</span>
+              </button>
+              <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+            </form>
+          </aside>
+
+          <section class="protocol-panel">
+            <div class="section-heading protocol-heading">
+              <div>
+                <span class="step-label">Execution trace</span>
+                <h2>Protocol stages</h2>
+              </div>
+              <div id="run-summary" class="run-summary idle">Ready to run</div>
+            </div>
+
+            <div class="authority-strip" aria-label="Threshold authority selection">
+              <div class="authority active"><span>A1</span><small>Selected</small></div>
+              <div class="connector active" aria-hidden="true"></div>
+              <div class="authority active"><span>A2</span><small>Selected</small></div>
+              <div class="connector" aria-hidden="true"></div>
+              <div class="authority"><span>A3</span><small>Offline</small></div>
+              <div class="threshold-caption">2 shares satisfy t = 2</div>
+            </div>
+
+            <ol id="stage-list" class="stage-list">
+              <li class="stage pending"><span class="stage-number">1</span><div><strong>Setup</strong><small>Pairing group and attribute generators</small></div></li>
+              <li class="stage pending"><span class="stage-number">2</span><div><strong>TTPKeyGen + AggKey</strong><small>Authority shares and consolidated verification key</small></div></li>
+              <li class="stage pending"><span class="stage-number">3</span><div><strong>PrepareBlindSign</strong><small>Commitment, ElGamal encryption, issuance proof</small></div></li>
+              <li class="stage pending"><span class="stage-number">4</span><div><strong>BlindSign</strong><small>Two blinded partial credentials</small></div></li>
+              <li class="stage pending"><span class="stage-number">5</span><div><strong>Unblind</strong><small>Remove ElGamal blinding</small></div></li>
+              <li class="stage pending"><span class="stage-number">6</span><div><strong>AggCred</strong><small>Lagrange interpolation over two shares</small></div></li>
+              <li class="stage pending"><span class="stage-number">7</span><div><strong>ProveCred</strong><small>Credential randomization and showing proof</small></div></li>
+              <li class="stage pending"><span class="stage-number">8</span><div><strong>VerifyCred</strong><small>Proof verification and pairing equation</small></div></li>
+              <li class="stage pending application-stage"><span class="stage-number">9</span><div><strong>Application record</strong><small>Process-local UsedList update</small></div></li>
+            </ol>
+          </section>
+        </section>
+
+        <section id="result-panel" class="result-panel" hidden>
+          <div class="result-icon" aria-hidden="true">✓</div>
+          <div>
+            <span class="step-label">Result</span>
+            <h2 id="result-title">Credential accepted</h2>
+            <p id="result-copy"></p>
+          </div>
+          <dl class="result-metrics">
+            <div><dt>Total run</dt><dd id="total-duration">—</dd></div>
+            <div><dt>UsedList entries</dt><dd id="used-count">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="explanation-grid">
+          <article class="explanation-card mapping-card">
+            <span class="step-label">Paper → code</span>
+            <h2>Exact implementation path</h2>
+            <div class="mapping-list">
+              <div><code>Setup</code><span>→</span><code>setup</code></div>
+              <div><code>TTPKeyGen</code><span>→</span><code>ttp_keygen</code></div>
+              <div><code>PrepareBlindSign</code><span>→</span><code>prepare_blind_sign</code></div>
+              <div><code>BlindSign</code><span>→</span><code>blind_sign</code></div>
+              <div><code>Unblind</code><span>→</span><code>unblind</code></div>
+              <div><code>AggCred</code><span>→</span><code>agg_cred</code></div>
+              <div><code>ProveCred</code><span>→</span><code>prove_cred</code></div>
+              <div><code>VerifyCred</code><span>→</span><code>verify_cred</code></div>
+            </div>
+            <p>All functions above execute from <code>coconut/scheme.py</code>.</p>
+          </article>
+
+          <article class="explanation-card boundary-card">
+            <span class="step-label warning">Security boundary</span>
+            <h2>What this demo does not establish</h2>
+            <p>
+              The local <code>UsedList</code> stores <code>(IssueID, complaint ID)</code>.
+              It is not cryptographically bound to the private credential secret and
+              does not provide an anonymous nullifier or cross-process replay prevention.
+            </p>
+            <div class="boundary-note">
+              <strong>Explicit research TODO</strong>
+              Application-specific ZK binding to credential secret <code>k</code>.
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <footer>
+        <span>Local educational interface</span>
+        <span>Original Coconut cryptographic code remains unchanged</span>
+      </footer>
+    </div>
+    <script src="./app.js" defer></script>
+  </body>
+</html>

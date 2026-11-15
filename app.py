@@ -445,6 +445,7 @@ def main():
     st.title("LRSW99 Pseudonym System")
     st.caption("Follow Sections 4.1 to 4.3 of Pseudonym Systems by Lysyanskaya, Rivest, Sahai, and Wolf.")
     st.warning("These parameters are insecure.")
+    st.markdown("[Open the Coconut demo](https://yesy01.github.io/thesis/coconut/)")
     with st.expander("How to run the demo"):
         st.markdown(
             "1. In **Setup**, load the group and generate keys for Alice, O, and O′.\n"
