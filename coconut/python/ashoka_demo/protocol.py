@@ -20,6 +20,72 @@ from coconut.utils import elgamal_keygen
 AUTHORITY_COUNT = 3
 THRESHOLD = 2
 
+STAGE_DEFINITIONS = (
+    {
+        "algorithm": "Setup",
+        "function": "setup(2)",
+        "file": "coconut/scheme.py",
+        "actor": "System",
+        "activity": "Initializing the pairing group and deriving two attribute generators.",
+    },
+    {
+        "algorithm": "TTPKeyGen + AggKey",
+        "function": "ttp_keygen(); agg_key()",
+        "file": "coconut/scheme.py",
+        "actor": "Authority setup",
+        "activity": "Generating three key shares and combining the selected verification shares.",
+    },
+    {
+        "algorithm": "PrepareBlindSign",
+        "function": "elgamal_keygen(); prepare_blind_sign()",
+        "file": "coconut/utils.py + coconut/scheme.py",
+        "actor": "User",
+        "activity": "Committing to the attributes, encrypting private k, and constructing the issuance proof.",
+    },
+    {
+        "algorithm": "BlindSign",
+        "function": "blind_sign() × 2",
+        "file": "coconut/scheme.py",
+        "actor": "Authorities A1 + A2",
+        "activity": "Checking the issuance proof and producing two blinded credential shares.",
+    },
+    {
+        "algorithm": "Unblind",
+        "function": "unblind() × 2",
+        "file": "coconut/scheme.py",
+        "actor": "User",
+        "activity": "Removing ElGamal blinding from both partial credentials.",
+    },
+    {
+        "algorithm": "AggCred",
+        "function": "agg_cred()",
+        "file": "coconut/scheme.py",
+        "actor": "User",
+        "activity": "Interpolating the two ordered shares into one threshold credential.",
+    },
+    {
+        "algorithm": "ProveCred",
+        "function": "prove_cred()",
+        "file": "coconut/scheme.py",
+        "actor": "Credential holder",
+        "activity": "Randomizing the credential and constructing the showing proof.",
+    },
+    {
+        "algorithm": "VerifyCred",
+        "function": "verify_cred()",
+        "file": "coconut/scheme.py",
+        "actor": "Verifier",
+        "activity": "Checking the showing proof and the final pairing equation.",
+    },
+    {
+        "algorithm": "Application record",
+        "function": "InMemoryUsedList.record()",
+        "file": "ashoka_demo/protocol.py",
+        "actor": "Application",
+        "activity": "Checking the process-local UsedList before recording the complaint.",
+    },
+)
+
 
 class InMemoryUsedList:
     """Process-local complaint records; this is not a cryptographic nullifier."""
@@ -56,21 +122,46 @@ def _validate_inputs(issue_id, complaint_id, complaint_text):
         raise ValueError("Complaint text must be 5000 characters or fewer")
 
 
-def _stage(stages, algorithm, function, file_name, started, detail):
-    stages.append(
+def _emit(event_callback, event):
+    if event_callback is not None:
+        event_callback(event)
+
+
+def _begin_stage(stage_number, event_callback):
+    definition = STAGE_DEFINITIONS[stage_number - 1]
+    _emit(
+        event_callback,
         {
-            "number": len(stages) + 1,
-            "algorithm": algorithm,
-            "function": function,
-            "file": file_name,
-            "status": "complete",
-            "duration_ms": round((perf_counter() - started) * 1000, 2),
-            "detail": detail,
-        }
+            "type": "stage_start",
+            "stage": {
+                "number": stage_number,
+                "status": "running",
+                **definition,
+            },
+        },
     )
+    return perf_counter()
 
 
-def execute_flow(issue_id, complaint_id, complaint_text, used_list=None):
+def _finish_stage(stages, stage_number, started, detail, event_callback):
+    stage = {
+        "number": stage_number,
+        "status": "complete",
+        "duration_ms": round((perf_counter() - started) * 1000, 2),
+        "detail": detail,
+        **STAGE_DEFINITIONS[stage_number - 1],
+    }
+    stages.append(stage)
+    _emit(event_callback, {"type": "stage_complete", "stage": stage})
+
+
+def execute_flow(
+    issue_id,
+    complaint_id,
+    complaint_text,
+    used_list=None,
+    event_callback=None,
+):
     """Execute one real 2-of-3 Coconut issuance and showing flow.
 
     The complaint content and identifier are application data. The Coconut
@@ -83,22 +174,21 @@ def execute_flow(issue_id, complaint_id, complaint_text, used_list=None):
     stages = []
     flow_started = perf_counter()
 
-    started = perf_counter()
+    started = _begin_stage(1, event_callback)
     params = setup(2)
     _, order, _, _, _, _ = params
     student_secret_k = order.random()
     private_attributes = [student_secret_k]
     public_attributes = [issue_id]
-    _stage(
+    _finish_stage(
         stages,
-        "Setup",
-        "setup(2)",
-        "coconut/scheme.py",
+        1,
         started,
         "Initialized the pairing group and two attribute generators.",
+        event_callback,
     )
 
-    started = perf_counter()
+    started = _begin_stage(2, event_callback)
     secret_keys, verification_keys = ttp_keygen(
         params, THRESHOLD, AUTHORITY_COUNT
     )
@@ -108,16 +198,15 @@ def execute_flow(issue_id, complaint_id, complaint_text, used_list=None):
         None,
     ]
     aggregate_vk = agg_key(params, selected_verification_keys)
-    _stage(
+    _finish_stage(
         stages,
-        "TTPKeyGen + AggKey",
-        "ttp_keygen(); agg_key()",
-        "coconut/scheme.py",
+        2,
         started,
         "Generated three authority shares and aggregated authorities 1 and 2.",
+        event_callback,
     )
 
-    started = perf_counter()
+    started = _begin_stage(3, event_callback)
     elgamal_private, gamma = elgamal_keygen(params)
     request = prepare_blind_sign(
         params,
@@ -125,16 +214,15 @@ def execute_flow(issue_id, complaint_id, complaint_text, used_list=None):
         private_attributes,
         public_m=public_attributes,
     )
-    _stage(
+    _finish_stage(
         stages,
-        "PrepareBlindSign",
-        "elgamal_keygen(); prepare_blind_sign()",
-        "coconut/utils.py + coconut/scheme.py",
+        3,
         started,
         "Committed to private k and public IssueID, encrypted k, and created the issuance proof.",
+        event_callback,
     )
 
-    started = perf_counter()
+    started = _begin_stage(4, event_callback)
     blinded_shares = [
         blind_sign(
             params,
@@ -145,55 +233,51 @@ def execute_flow(issue_id, complaint_id, complaint_text, used_list=None):
         )
         for index in range(THRESHOLD)
     ]
-    _stage(
+    _finish_stage(
         stages,
-        "BlindSign",
-        "blind_sign() × 2",
-        "coconut/scheme.py",
+        4,
         started,
         "Authorities 1 and 2 verified the issuance proof and returned blinded shares.",
+        event_callback,
     )
 
-    started = perf_counter()
+    started = _begin_stage(5, event_callback)
     shares = [
         unblind(params, blinded_share, elgamal_private)
         for blinded_share in blinded_shares
     ]
-    _stage(
+    _finish_stage(
         stages,
-        "Unblind",
-        "unblind() × 2",
-        "coconut/scheme.py",
+        5,
         started,
         "Removed the user's ElGamal blinding from both partial credentials.",
+        event_callback,
     )
 
-    started = perf_counter()
+    started = _begin_stage(6, event_callback)
     credential = agg_cred(params, [shares[0], shares[1], None])
-    _stage(
+    _finish_stage(
         stages,
-        "AggCred",
-        "agg_cred()",
-        "coconut/scheme.py",
+        6,
         started,
         "Aggregated two ordered shares with the original Lagrange interpolation helper.",
+        event_callback,
     )
 
-    started = perf_counter()
+    started = _begin_stage(7, event_callback)
     randomized_showing = prove_cred(
         params, aggregate_vk, credential, private_attributes
     )
     credential_randomized = randomized_showing[2] != credential
-    _stage(
+    _finish_stage(
         stages,
-        "ProveCred",
-        "prove_cred()",
-        "coconut/scheme.py",
+        7,
         started,
         "Randomized the credential and generated the showing proof without revealing k.",
+        event_callback,
     )
 
-    started = perf_counter()
+    started = _begin_stage(8, event_callback)
     accepted = verify_cred(
         params,
         aggregate_vk,
@@ -202,28 +286,26 @@ def execute_flow(issue_id, complaint_id, complaint_text, used_list=None):
     )
     if not accepted:
         raise RuntimeError("the original Coconut verifier rejected the showing")
-    _stage(
+    _finish_stage(
         stages,
-        "VerifyCred",
-        "verify_cred()",
-        "coconut/scheme.py",
+        8,
         started,
         "Verified the showing proof and final pairing equation for the public IssueID.",
+        event_callback,
     )
 
-    started = perf_counter()
+    started = _begin_stage(9, event_callback)
     recorded = used_list.record(issue_id, complaint_id)
-    _stage(
+    _finish_stage(
         stages,
-        "Application record",
-        "InMemoryUsedList.record()",
-        "ashoka_demo/protocol.py",
+        9,
         started,
         (
             "Stored the local complaint record."
             if recorded
             else "Rejected a duplicate local complaint record."
         ),
+        event_callback,
     )
 
     return {

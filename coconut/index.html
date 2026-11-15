@@ -91,6 +91,10 @@
               </div>
               <div id="run-summary" class="run-summary idle">Ready to run</div>
             </div>
+            <p class="trace-note">
+              Live events are emitted when each function starts and completes.
+              Playback is paced for study; displayed milliseconds are the actual measured runtime.
+            </p>
 
             <div class="authority-strip" aria-label="Threshold authority selection">
               <div class="authority active"><span>A1</span><small>Selected</small></div>
@@ -101,7 +105,7 @@
               <div class="threshold-caption">2 shares satisfy t = 2</div>
             </div>
 
-            <ol id="stage-list" class="stage-list">
+            <ol id="stage-list" class="stage-list" aria-live="polite">
               <li class="stage pending"><span class="stage-number">1</span><div><strong>Setup</strong><small>Pairing group and attribute generators</small></div></li>
               <li class="stage pending"><span class="stage-number">2</span><div><strong>TTPKeyGen + AggKey</strong><small>Authority shares and consolidated verification key</small></div></li>
               <li class="stage pending"><span class="stage-number">3</span><div><strong>PrepareBlindSign</strong><small>Commitment, ElGamal encryption, issuance proof</small></div></li>

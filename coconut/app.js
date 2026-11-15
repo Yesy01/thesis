@@ -4,6 +4,40 @@ const formMessage = document.querySelector("#form-message");
 const stageList = document.querySelector("#stage-list");
 const runSummary = document.querySelector("#run-summary");
 const resultPanel = document.querySelector("#result-panel");
+const stageBlueprints = [
+  ["Setup", "Pairing group and attribute generators"],
+  ["TTPKeyGen + AggKey", "Authority shares and consolidated verification key"],
+  ["PrepareBlindSign", "Commitment, ElGamal encryption, issuance proof"],
+  ["BlindSign", "Two blinded partial credentials"],
+  ["Unblind", "Remove ElGamal blinding"],
+  ["AggCred", "Lagrange interpolation over two shares"],
+  ["ProveCred", "Credential randomization and showing proof"],
+  ["VerifyCred", "Proof verification and pairing equation"],
+  ["Application record", "Process-local UsedList update"],
+];
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const wait = (milliseconds) => new Promise((resolve) => {
+  window.setTimeout(resolve, reducedMotion ? 20 : milliseconds);
+});
+
+function resetStages() {
+  stageList.replaceChildren();
+  stageBlueprints.forEach(([algorithm, detail], index) => {
+    const item = document.createElement("li");
+    item.className = `stage pending ${index === 8 ? "application-stage" : ""}`;
+    const number = document.createElement("span");
+    number.className = "stage-number";
+    number.textContent = index + 1;
+    const content = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = algorithm;
+    const description = document.createElement("small");
+    description.textContent = detail;
+    content.append(title, description);
+    item.append(number, content);
+    stageList.append(item);
+  });
+}
 
 function setRunning(running) {
   runButton.disabled = running;
@@ -15,44 +49,56 @@ function setRunning(running) {
   if (running) {
     resultPanel.hidden = true;
     formMessage.textContent = "";
-    document.querySelectorAll(".stage").forEach((item) => {
-      item.classList.remove("complete");
-      item.classList.add("pending");
-    });
-    document.querySelector(".stage").classList.add("running");
+    resetStages();
   }
 }
 
-function renderStages(stages) {
-  stageList.replaceChildren();
-  stages.forEach((stage) => {
-    const item = document.createElement("li");
-    item.className = `stage complete ${stage.number === 9 ? "application-stage" : ""}`;
+function renderStage(stage, status) {
+  const item = stageList.children[stage.number - 1];
+  item.className = `stage ${status} ${stage.number === 9 ? "application-stage" : ""}`;
 
-    const number = document.createElement("span");
-    number.className = "stage-number";
-    number.textContent = "✓";
+  const number = document.createElement("span");
+  number.className = "stage-number";
+  number.textContent = status === "complete" ? "✓" : "•••";
 
-    const content = document.createElement("div");
-    const title = document.createElement("strong");
-    title.textContent = stage.algorithm;
-    const detail = document.createElement("small");
-    detail.textContent = stage.detail;
-    const mapping = document.createElement("code");
-    mapping.textContent = `${stage.function} · ${stage.file}`;
-    content.append(title, detail, mapping);
+  const content = document.createElement("div");
+  const title = document.createElement("strong");
+  title.textContent = stage.algorithm;
+  const actor = document.createElement("span");
+  actor.className = "stage-actor";
+  actor.textContent = stage.actor;
+  const detail = document.createElement("small");
+  detail.textContent = status === "complete" ? stage.detail : stage.activity;
+  const mapping = document.createElement("code");
+  mapping.textContent = `${stage.function} · ${stage.file}`;
+  content.append(title, actor, detail, mapping);
 
-    const duration = document.createElement("span");
-    duration.className = "stage-time";
-    duration.textContent = `${stage.duration_ms.toFixed(2)} ms`;
+  const duration = document.createElement("span");
+  duration.className = "stage-time";
+  duration.textContent = status === "complete"
+    ? `${stage.duration_ms.toFixed(2)} ms`
+    : "running";
 
-    item.append(number, content, duration);
-    stageList.append(item);
-  });
+  item.replaceChildren(number, content, duration);
+  if (status === "running") item.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+async function displayProtocolEvent(event) {
+  if (event.type === "stage_start") {
+    const { stage } = event;
+    runSummary.textContent = `Stage ${stage.number} of ${stageBlueprints.length}`;
+    runButton.querySelector("span").textContent = `${stage.actor}: ${stage.algorithm}…`;
+    renderStage(stage, "running");
+    await wait(420);
+  } else if (event.type === "stage_complete") {
+    renderStage(event.stage, "complete");
+    await wait(260);
+  } else if (event.type === "error") {
+    throw new Error(event.error || "Protocol run failed");
+  }
 }
 
 function renderResult(result) {
-  renderStages(result.stages);
   runSummary.className = "run-summary complete";
   runSummary.textContent = `${result.stages.length} stages complete`;
 
@@ -73,16 +119,38 @@ function renderResult(result) {
 async function runProtocol(payload) {
   if (form.dataset.runtime === "browser") {
     const { runFlow } = await import("./browser.js");
-    return runFlow(payload);
+    return runFlow(payload, displayProtocolEvent);
   }
-  const response = await fetch("/api/run", {
+  const response = await fetch("/api/run/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Protocol run failed");
-  return data;
+  if (!response.ok || !response.body) throw new Error("Could not start the protocol stream");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result;
+
+  async function consumeLine(line) {
+    if (!line.trim()) return;
+    const event = JSON.parse(line);
+    if (event.type === "result") result = event.result;
+    else await displayProtocolEvent(event);
+  }
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+    for (const line of lines) await consumeLine(line);
+    if (done) break;
+  }
+  await consumeLine(buffer);
+  if (!result) throw new Error("The protocol stream ended without a result");
+  return result;
 }
 
 form.addEventListener("submit", async (event) => {
