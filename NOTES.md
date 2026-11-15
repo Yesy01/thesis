@@ -57,7 +57,7 @@ Final verification on Python 3.8.20 completed successfully:
 pytest -v --cov=coconut tests/: 14 passed, 96% coconut coverage
 examples/trace_coconut.py: credential accepted = True
 python -m ashoka_demo.demo: credential accepted = True
-GUI POST /api/run: 9 stages complete, credential accepted = True
+GUI POST /api/run/stream: 18 ordered start/complete events, credential accepted = True
 ```
 
 `git diff -- coconut` is empty: none of the original cryptographic library
@@ -167,6 +167,14 @@ credential attribute. Complaint ID and complaint text remain application data.
 This is new educational code. The original `coconut/` package is unchanged.
 The interface does not add a cryptographic nullifier and repeats the existing
 UsedList limitation in its result and security-boundary panel.
+
+The local server also exposes `POST /api/run/stream`. `execute_flow` calls an
+optional event callback immediately before and after each of its nine real
+operations, and the HTTP handler flushes those 18 events as newline-delimited
+JSON. The GUI marks the current actor and function as running, then replaces
+that state with the measured result. Its short visual delay is presentation
+pacing only; the duration shown beside each operation is measured around the
+underlying Python call and excludes that delay.
 
 ## Files added
 

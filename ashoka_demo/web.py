@@ -40,6 +40,47 @@ class DemoHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _read_payload(self):
+        content_length = int(self.headers.get("Content-Length", "0"))
+        if content_length <= 0 or content_length > MAX_REQUEST_BYTES:
+            raise ValueError("request body must be between 1 byte and 64 KiB")
+        payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("request body must be a JSON object")
+        return payload
+
+    def _write_stream_event(self, event):
+        self.wfile.write((json.dumps(event) + "\n").encode("utf-8"))
+        self.wfile.flush()
+
+    def _run_stream(self, payload):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Accel-Buffering", "no")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.close_connection = True
+        try:
+            result = execute_flow(
+                payload.get("issue_id"),
+                payload.get("complaint_id"),
+                payload.get("complaint_text"),
+                USED_LIST,
+                event_callback=self._write_stream_event,
+            )
+            self._write_stream_event({"type": "result", "result": result})
+        except (ValueError, TypeError) as error:
+            self._write_stream_event({"type": "error", "error": str(error)})
+        except Exception as error:
+            print("[coconut-gui] protocol error: {}".format(error))
+            self._write_stream_event(
+                {
+                    "type": "error",
+                    "error": "the Coconut protocol run failed; inspect the server log",
+                }
+            )
+
     def do_GET(self):
         path = urlparse(self.path).path
         if path == "/api/config":
@@ -66,14 +107,15 @@ class DemoHandler(BaseHTTPRequestHandler):
         self.send_error(404)
 
     def do_POST(self):
-        if urlparse(self.path).path != "/api/run":
+        path = urlparse(self.path).path
+        if path not in ("/api/run", "/api/run/stream"):
             self.send_error(404)
             return
         try:
-            content_length = int(self.headers.get("Content-Length", "0"))
-            if content_length <= 0 or content_length > MAX_REQUEST_BYTES:
-                raise ValueError("request body must be between 1 byte and 64 KiB")
-            payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            payload = self._read_payload()
+            if path == "/api/run/stream":
+                self._run_stream(payload)
+                return
             result = execute_flow(
                 payload.get("issue_id"),
                 payload.get("complaint_id"),

@@ -102,6 +102,7 @@ input:focus, textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px 
 .run-summary.idle { color: var(--muted); }
 .run-summary.running { color: #8c4b21; background: var(--orange-soft); border-color: #efc39f; }
 .run-summary.complete { color: var(--green-dark); background: var(--green-soft); border-color: #b7d6c1; }
+.trace-note { margin: 4px 0 20px; max-width: 590px; color: var(--muted); font-size: 11px; }
 
 .authority-strip { position: relative; margin: 28px 0 25px; display: flex; align-items: center; background: #f7f6f1; border: 1px solid var(--line); padding: 17px 20px 30px; border-radius: 12px; }
 .authority { text-align: center; flex: 0 0 58px; color: var(--muted); }
@@ -123,11 +124,14 @@ input:focus, textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px 
 .stage strong { font-size: 13px; margin-top: 1px; }
 .stage small { color: var(--muted); font-size: 11px; margin-top: 2px; }
 .stage code { font-size: 10px; color: var(--green); }
+.stage-actor { display: inline-block; margin: 4px 7px 3px 0; padding: 2px 6px; border-radius: 999px; background: #e8e7e3; color: #555e59; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .stage-time { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; padding-top: 5px; }
 .stage.complete .stage-number { background: var(--green-soft); border-color: #a9cfb6; color: var(--green-dark); }
 .stage.application-stage.complete .stage-number { background: var(--orange-soft); border-color: #efc39f; color: #8c4b21; }
-.stage.running { animation: pulse .9s ease-in-out infinite alternate; }
-@keyframes pulse { to { opacity: .52; } }
+.stage.running { margin: 2px -10px; padding: 11px 10px; border-radius: 10px; background: #f5eee2; box-shadow: inset 3px 0 0 var(--orange); }
+.stage.running .stage-number { border-color: var(--orange); color: #9b4e1f; animation: pulse .7s ease-in-out infinite alternate; }
+.stage.running .stage-actor { background: var(--orange-soft); color: #8c4b21; }
+@keyframes pulse { to { transform: scale(.9); opacity: .62; } }
 
 .result-panel { margin-top: 24px; background: var(--green-dark); color: white; border-radius: 18px; padding: 28px 32px; display: grid; grid-template-columns: 48px 1fr auto; gap: 18px; align-items: center; box-shadow: var(--shadow); }
 .result-panel[hidden] { display: none; }
