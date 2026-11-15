@@ -35,5 +35,18 @@ or simply using tox:
 $ tox
 ```
 
+## Local educational GUI
+
+This study branch includes a separate GUI that runs the original Coconut
+functions and exposes the 2-of-3 issuance and showing stages. From the
+reproduction environment, run:
+
+```console
+python -m ashoka_demo.web --host 0.0.0.0 --port 8000
+```
+
+Open `http://localhost:8000`. See `ashoka_demo/README.md` for the Docker
+command and the application's security boundary.
+
 ## License
 [The Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0)

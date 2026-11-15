@@ -1,0 +1,9 @@
+.git
+.venv
+.tox
+*.egg-info
+__pycache__
+.coverage
+htmlcov
+original-tests.log
+docker-build.log
