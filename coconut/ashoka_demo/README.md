@@ -17,6 +17,23 @@ not cryptographically bound to the Coconut credential.
 > TODO: application-specific construction requiring ZK binding to credential
 > secret `k`.
 
+## GitHub Pages
+
+[Open the Coconut Protocol Lab](https://yesy01.github.io/thesis/coconut/).
+
+The hosted page runs the original Python protocol and proofs in Pyodide.
+Its browser adapter uses noble-curves for BLS12-381 group operations. The
+native Python demo uses bplib and petlib with different curve parameters
+and encodings. The browser tab keeps its own complaint list until reload.
+
+To build the page from the Coconut project directory:
+
+```sh
+python ashoka_demo/build_pages.py /tmp/thesis-pages/coconut
+```
+
+Publish that output in the `coconut/` directory on `gh-pages`.
+
 Run from the repository root inside the reproduction environment:
 
 ```console

@@ -70,6 +70,21 @@ function renderResult(result) {
   resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+async function runProtocol(payload) {
+  if (form.dataset.runtime === "browser") {
+    const { runFlow } = await import("./browser.js");
+    return runFlow(payload);
+  }
+  const response = await fetch("/api/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Protocol run failed");
+  return data;
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   setRunning(true);
@@ -84,14 +99,7 @@ form.addEventListener("submit", async (event) => {
     if (!Number.isSafeInteger(payload.issue_id) || payload.issue_id <= 0) {
       throw new Error("IssueID must be a positive safe integer");
     }
-    const response = await fetch("/api/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Protocol run failed");
-    renderResult(data);
+    renderResult(await runProtocol(payload));
   } catch (error) {
     runSummary.className = "run-summary idle";
     runSummary.textContent = "Run failed";
