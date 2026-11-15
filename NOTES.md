@@ -11,7 +11,7 @@ changes, and the mapping between the implementation and the Coconut paper.
 - Original cryptographic library code has not been modified.
 
 
-The combined suite contains 14 passing tests. The Phase 8 nullifier is
+The combined suite contains 21 passing tests. The Phase 8 nullifier is
 intentionally not implemented; the requested ZK-binding TODO remains explicit.
 
 ##  implementation map
@@ -54,7 +54,7 @@ variant.
 Final verification on Python 3.8.20 completed successfully:
 
 ```text
-pytest -v --cov=coconut tests/: 14 passed, 96% coconut coverage
+pytest -v --cov=coconut tests/: 21 passed, 96% coconut coverage
 examples/trace_coconut.py: credential accepted = True
 python -m ashoka_demo.demo: credential accepted = True
 GUI POST /api/run/stream: 18 ordered start/complete events, credential accepted = True
@@ -191,6 +191,34 @@ is displayed on the hosted page and documented in `ashoka_demo/README.md`.
 The Docker environment remains the reference environment for reproducing the
 original implementation; the hosted build is an educational visualization.
 
+### Process isolation, parameters, and failure experiments
+
+The GUI now follows the process-oriented structure of the LRSW99 study demo.
+It uses a compact heading and four separate views: Protocol, Parameters,
+Failure experiments, and Boundaries. The Protocol view shows only one selected
+process in detail while retaining the ordered nine-process navigation.
+
+`ashoka_demo/parameters.py` serializes public setup information: active group
+implementation, group order and bit length, encoded generator sizes and
+fingerprints, attribute capacity, threshold, selected authorities, attribute
+roles, proof names, and the final verification equation. It does not serialize
+user, authority, or ElGamal secret scalars.
+
+`ashoka_demo/attacks.py` runs six controlled negative experiments using fresh
+valid credentials:
+
+1. changed private attribute;
+2. one share against the 2-of-3 aggregate key;
+3. corrupted partial credential;
+4. modified showing-proof challenge;
+5. unrelated aggregate verification key; and
+6. independently altered randomized credential.
+
+Each experiment reports its assumption, mutation, expected rejection, observed
+result, and whether `verify_cred` returned `False` or raised `AssertionError`.
+The threshold experiment also reports the original one-share interpolation
+`AttributeError`. These are implementation experiments, not security proofs.
+
 ## Files added
 
 - `.dockerignore`
@@ -203,6 +231,8 @@ original implementation; the hosted build is an educational visualization.
 - `ashoka_demo/demo.py`
 - `ashoka_demo/README.md`
 - `ashoka_demo/protocol.py`
+- `ashoka_demo/parameters.py`
+- `ashoka_demo/attacks.py`
 - `ashoka_demo/web.py`
 - `ashoka_demo/static/index.html`
 - `ashoka_demo/static/styles.css`

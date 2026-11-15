@@ -7,12 +7,15 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+from ashoka_demo.attacks import list_attacks, run_attack
+from ashoka_demo.parameters import describe_parameters
 from ashoka_demo.protocol import InMemoryUsedList, execute_flow
 
 
 STATIC_ROOT = Path(__file__).with_name("static").resolve()
 USED_LIST = InMemoryUsedList()
 MAX_REQUEST_BYTES = 64 * 1024
+RUNTIME_LABEL = "Native petlib/bplib BpGroup (Docker reproduction)"
 
 
 class DemoHandler(BaseHTTPRequestHandler):
@@ -94,6 +97,12 @@ class DemoHandler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if path == "/api/parameters":
+            self._send_json(200, describe_parameters(RUNTIME_LABEL))
+            return
+        if path == "/api/attacks":
+            self._send_json(200, {"attacks": list_attacks()})
+            return
         if path == "/":
             self._send_file(STATIC_ROOT / "index.html")
             return
@@ -108,11 +117,14 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
-        if path not in ("/api/run", "/api/run/stream"):
+        if path not in ("/api/run", "/api/run/stream", "/api/attack"):
             self.send_error(404)
             return
         try:
             payload = self._read_payload()
+            if path == "/api/attack":
+                self._send_json(200, run_attack(payload.get("attack_id")))
+                return
             if path == "/api/run/stream":
                 self._run_stream(payload)
                 return

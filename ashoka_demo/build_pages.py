@@ -22,6 +22,7 @@ def build(output):
             name: PROJECT / name
             for name in (
                 "ashoka_demo/__init__.py", "ashoka_demo/protocol.py",
+                "ashoka_demo/attacks.py", "ashoka_demo/parameters.py",
                 "coconut/__init__.py", "coconut/scheme.py", "coconut/proofs.py", "coconut/utils.py",
             )
         },
@@ -36,11 +37,14 @@ def build(output):
     html = html.replace('href="/static/', 'href="./').replace('src="/static/', 'src="./')
     html = html.replace('href="/"', 'href="./"')
     html = html.replace('id="protocol-form"', 'id="protocol-form" data-runtime="browser"')
-    html = html.replace("Local study environment", 'Browser demo · <a href="../">LRSW99 demo</a>')
     html = html.replace(
-        "functions unchanged.",
-        "functions unchanged. This browser edition uses BLS12-381 for group operations. "
-        "The local complaint list resets on reload.",
+        "Academic implementation walkthrough",
+        'Browser demo · <a href="../">LRSW99 demo</a>',
+    )
+    html = html.replace(
+        "Local runtime: native petlib/bplib reproduction.",
+        "Hosted runtime: Python in Pyodide with a documented BLS12-381 "
+        "compatibility adapter. Complaint records reset on reload.",
     )
     (output / "index.html").write_text(html, encoding="utf-8")
 

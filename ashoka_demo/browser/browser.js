@@ -39,7 +39,7 @@ function getWorker() {
 }
 
 
-export function runFlow(payload, onEvent = async () => {}) {
+function requestWorker(type, payload, onEvent = async () => {}) {
   const requestId = ++requestSequence;
   return new Promise((resolve, reject) => {
     pending.set(requestId, {
@@ -49,9 +49,24 @@ export function runFlow(payload, onEvent = async () => {}) {
       displayQueue: Promise.resolve(),
     });
     getWorker().postMessage({
-      type: "run",
+      type,
       request_id: requestId,
       payload,
     });
   });
+}
+
+
+export function runFlow(payload, onEvent) {
+  return requestWorker("run", payload, onEvent);
+}
+
+
+export function getParameters() {
+  return requestWorker("parameters", {});
+}
+
+
+export function runAttack(attackId) {
+  return requestWorker("attack", { attack_id: attackId });
 }

@@ -60,6 +60,8 @@ sys.path.insert(0, "/coconut-demo")
 import pairing
 pairing.install()
 from progress_bridge import emit
+from ashoka_demo.attacks import run_attack
+from ashoka_demo.parameters import describe_parameters
 from ashoka_demo.protocol import InMemoryUsedList, execute_flow
 
 used_list = InMemoryUsedList()
@@ -75,21 +77,43 @@ def run_request(payload):
         event_callback=emit_protocol_event,
     )
     return json.dumps(result)
+
+def parameter_request():
+    return json.dumps(describe_parameters(
+        "Browser adapter: BLS12-381 via noble-curves"
+    ))
+
+def attack_request(payload):
+    args = json.loads(payload)
+    return json.dumps(run_attack(args["attack_id"]))
   `);
-  return pyodide.globals.get("run_request");
+  return {
+    run: pyodide.globals.get("run_request"),
+    parameters: pyodide.globals.get("parameter_request"),
+    attack: pyodide.globals.get("attack_request"),
+  };
 }
 
 
 self.addEventListener("message", async ({ data }) => {
-  if (data.type !== "run") return;
   activeRequestId = data.request_id;
   try {
     runtime ??= startRuntime().catch((error) => {
       runtime = undefined;
       throw error;
     });
-    const run = await runtime;
-    const result = JSON.parse(run(JSON.stringify(data.payload)));
+    const api = await runtime;
+    let serialized;
+    if (data.type === "run") {
+      serialized = api.run(JSON.stringify(data.payload));
+    } else if (data.type === "parameters") {
+      serialized = api.parameters();
+    } else if (data.type === "attack") {
+      serialized = api.attack(JSON.stringify(data.payload));
+    } else {
+      throw new Error("Unknown browser worker request")
+    }
+    const result = JSON.parse(serialized);
     send("result", { result });
   } catch (error) {
     send("error", { error: error.message || String(error) });

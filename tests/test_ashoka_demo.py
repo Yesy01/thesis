@@ -2,6 +2,8 @@
 
 import pytest
 
+from ashoka_demo.attacks import ATTACKS, run_attack
+from ashoka_demo.parameters import describe_parameters
 from ashoka_demo.protocol import InMemoryUsedList, execute_flow
 
 
@@ -72,3 +74,23 @@ def test_invalid_application_input_is_rejected(
 ):
     with pytest.raises(ValueError, match=message):
         execute_flow(issue_id, complaint_id, complaint_text)
+
+
+@pytest.mark.parametrize("attack_id", [item["id"] for item in ATTACKS])
+def test_controlled_attack_experiment_is_rejected(attack_id):
+    result = run_attack(attack_id)
+
+    assert result["expected"] == "rejected"
+    assert result["observed"] == "rejected"
+    assert result["passed"] is True
+
+
+def test_parameter_description_contains_only_public_setup_data():
+    parameters = describe_parameters("test runtime")
+
+    assert parameters["threshold"] == 2
+    assert parameters["authority_count"] == 3
+    assert parameters["maximum_attributes"] == 2
+    assert parameters["group_order_bits"] > 200
+    assert parameters["private_attributes"] == ["student secret k"]
+    assert "secret" not in parameters

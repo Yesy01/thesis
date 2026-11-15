@@ -11,6 +11,19 @@ the paper algorithm, original Python function, source file, outcome, and local
 duration for every stage. It uses Python's standard-library HTTP server and
 adds no framework or cryptographic dependency.
 
+The interface separates the study material into four sections:
+
+1. a process-by-process protocol walkthrough;
+2. the public group and application parameters;
+3. six controlled failure experiments against `verify_cred`; and
+4. documented implementation boundaries.
+
+The failure experiments change one input at a time: the private attribute,
+threshold share count, a credential share, the showing proof, the aggregate
+verification key, or the randomized credential. Their results demonstrate
+the observed behavior of those code paths and are not presented as a general
+security proof.
+
 The `UsedList` key is only a local complaint record. It is not anonymous and is
 not cryptographically bound to the Coconut credential.
 
