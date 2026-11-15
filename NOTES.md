@@ -176,6 +176,21 @@ that state with the measured result. Its short visual delay is presentation
 pacing only; the duration shown beside each operation is measured around the
 underlying Python call and excludes that delay.
 
+### GitHub Pages browser build
+
+`ashoka_demo/build_pages.py` creates the static build published at
+`https://yesy01.github.io/thesis/coconut/`. The build executes the repository's
+Python protocol and proof code in Pyodide. A Web Worker forwards the same 18
+ordered stage events to the interface while keeping the browser responsive.
+
+GitHub Pages cannot load the native petlib/bplib extension stack used by the
+Docker reproduction. The browser-only `ashoka_demo/browser/pairing.py` adapter
+therefore uses noble-curves BLS12-381 group and pairing operations, whose curve
+parameters and encodings differ from native bplib. This compatibility boundary
+is displayed on the hosted page and documented in `ashoka_demo/README.md`.
+The Docker environment remains the reference environment for reproducing the
+original implementation; the hosted build is an educational visualization.
+
 ## Files added
 
 - `.dockerignore`

@@ -117,6 +117,10 @@ function renderResult(result) {
 }
 
 async function runProtocol(payload) {
+  if (form.dataset.runtime === "browser") {
+    const { runFlow } = await import("./browser.js");
+    return runFlow(payload, displayProtocolEvent);
+  }
   const response = await fetch("/api/run/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
